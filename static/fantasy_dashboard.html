@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fantasy Football Hall of Records</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050505;
+    color: #e8e000;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .scanline {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1000;
+    background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px);
+  }
+  .dash { max-width: 980px; margin: 0 auto; border: 3px solid #e8e000; padding: 20px; background: #0a0a0a; }
+  .hdr { text-align: center; border-bottom: 2px solid #e8e000; padding-bottom: 14px; margin-bottom: 18px; }
+  .hdr-title { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #ff6b00; line-height: 1.9; letter-spacing: 2px; }
+  .hdr-sub { margin-top: 8px; font-size: 18px; color: #888; }
+  .blink { animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .nbtn {
+    font-family: 'VT323', monospace; font-size: 18px;
+    background: #0a0a0a; color: #666; border: 1px solid #333;
+    padding: 5px 14px; cursor: pointer; letter-spacing: 1px;
+  }
+  .nbtn:hover { background: #1a1a1a; color: #e8e000; border-color: #666; }
+  .nbtn.active { background: #e8e000; color: #0a0a0a; border-color: #e8e000; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .sgrid { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; margin-bottom: 18px; }
+  .sc { background: #111; border: 1px solid #1c1c1c; padding: 12px 10px; text-align: center; }
+  .sl { font-size: 12px; color: #555; display: block; letter-spacing: 1px; margin-bottom: 5px; }
+  .sv { font-family: 'Press Start 2P', monospace; font-size: 15px; color: #ff6b00; display: block; line-height: 1.5; }
+  .ss { font-size: 14px; color: #444; display: block; margin-top: 4px; }
+  .box { border: 1px solid #1c1c1c; padding: 14px; margin-bottom: 14px; background: #0d0d0d; }
+  .bt { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #ff6b00; letter-spacing: 1px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #1a1a1a; }
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  th { text-align: left; color: #444; font-size: 12px; padding: 5px 8px; border-bottom: 1px solid #1a1a1a; letter-spacing: 1px; }
+  td { padding: 7px 8px; border-bottom: 1px solid #111; color: #bbb; }
+  tbody tr:hover td { background: #111; color: #e8e000; }
+  .gold { color: #e8e000; }
+  .orange { color: #ff6b00; }
+  .dim { color: #444; }
+  .green { color: #39e87a; }
+  .trophy-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #111; font-size: 17px; }
+  .ty { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #ff6b00; min-width: 44px; }
+  .tc { flex: 1; color: #e8e000; }
+  .tr { color: #555; font-size: 16px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .bl { min-width: 150px; color: #888; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bt2 { flex: 1; height: 14px; background: #141414; border: 1px solid #1c1c1c; }
+  .bf { height: 100%; background: #e8e000; }
+  .bf.alt { background: #ff6b00; }
+  .bv { min-width: 90px; text-align: right; color: #555; font-size: 15px; }
+  .srow { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .slbl { font-family: 'Press Start 2P', monospace; font-size: 12px; color: #ff6b00; }
+  .chart-wrap { position: relative; width: 100%; height: 220px; }
+  .tscroll { overflow-x: auto; }
+  #loading { text-align: center; padding: 60px 20px; }
+  .ld-t { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #ff6b00; margin-bottom: 20px; }
+  .ld-d { font-size: 22px; letter-spacing: 8px; }
+  .ld-h { color: #333; font-size: 15px; margin-top: 12px; }
+  .ld-prog { margin-top: 16px; font-size: 14px; color: #444; }
+  #error-box { display: none; border: 2px solid #ff6b00; padding: 16px; color: #ff6b00; font-size: 16px; white-space: pre-wrap; margin-top: 14px; }
+  .footer { text-align: center; border-top: 1px solid #1a1a1a; margin-top: 20px; padding-top: 10px; font-size: 13px; color: #333; letter-spacing: 1px; }
+  .owner-tag { font-size: 13px; color: #444; margin-left: 4px; }
+
+  /* ── This Week matchup styles ── */
+  .matchup-score { font-family: 'Press Start 2P', monospace; font-size: 13px; }
+  .matchup-score.winning { color: #e8e000; }
+  .matchup-score.losing  { color: #444; }
+  .matchup-score.tied    { color: #888; }
+
+  /* Fixed-scale bar grid */
+  .week-grid-wrap { position: relative; margin-bottom: 4px; }
+  .week-grid { position: relative; height: 14px; background: #0d0d0d; border: 1px solid #1a1a1a; }
+  .week-grid-marker { position: absolute; top: 0; bottom: 0; width: 1px; border-left: 1px dashed #2a2a2a; }
+  .week-grid-label { position: absolute; top: 100%; font-size: 11px; color: #333; transform: translateX(-50%); margin-top: 2px; letter-spacing: 0; }
+  .week-bar-actual { position: absolute; top: 0; bottom: 0; left: 0; background: #e8e000; }
+  .week-bar-proj { position: absolute; top: -2px; bottom: -2px; width: 3px; background: #ff6b00; border-radius: 1px; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="dash">
+
+  <div class="hdr">
+    <div class="hdr-title">*** FANTASY FOOTBALL ***<br>HALL OF RECORDS</div>
+    <div class="hdr-sub" id="league-tag">LOADING <span class="blink">_</span></div>
+  </div>
+
+  <div id="loading">
+    <div class="ld-t">FETCHING ALL SEASONS</div>
+    <div class="ld-d" id="dots">&gt; . .</div>
+    <div class="ld-h">proxy must be running: python espn_proxy.py</div>
+    <div class="ld-prog" id="prog"></div>
+  </div>
+
+  <div id="error-box"></div>
+
+  <div id="main" style="display:none">
+    <div class="nav">
+      <button class="nbtn active" id="week-tab-btn" onclick="showTab('overview')">[ THIS WEEK ]</button>
+      <button class="nbtn" onclick="showTab('standings')">[ STANDINGS ]</button>
+      <button class="nbtn" onclick="showTab('champions')">[ CHAMPIONS ]</button>
+      <button class="nbtn" onclick="showTab('records')">[ RECORDS ]</button>
+      <button class="nbtn" onclick="showTab('alltime')">[ ALL-TIME ]</button>
+      <button class="nbtn" onclick="showTab('owners')">[ OWNERS ]</button>
+    </div>
+
+    <div class="panel active" id="panel-overview">
+      <div class="box">
+        <div class="bt" id="week-box-title">CURRENT WEEK MATCHUPS</div>
+        <div id="week-matchups"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-champions">
+      <div class="box">
+        <div class="bt">CHAMPIONSHIP ROLL CALL</div>
+        <div id="champ-list"></div>
+      </div>
+      <div class="box">
+        <div class="bt">TITLE COUNT</div>
+        <div id="title-bars"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-standings">
+      <div class="srow">
+        <button class="nbtn" onclick="prevS()">[ &lt;&lt; ]</button>
+        <span class="slbl" id="s-disp">----</span>
+        <button class="nbtn" onclick="nextS()">[ &gt;&gt; ]</button>
+        <span style="color:#333;font-size:15px">BROWSE SEASONS</span>
+      </div>
+      <div class="box">
+        <div class="bt" id="s-title">FINAL STANDINGS</div>
+        <table id="s-tbl"><thead><tr><th>RK</th><th>TEAM</th><th>OWNER</th><th>W</th><th>L</th><th>T</th><th>PF</th><th>PA</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-records">
+      <div class="sgrid" id="rec-stats"></div>
+      <div class="box">
+        <div class="bt">LONGEST CONSECUTIVE REG. SEASON WIN STREAK (ACTIVE OWNERS)</div>
+        <table id="reg-streak-tbl">
+          <thead><tr><th>OWNER</th><th>STREAK</th><th>STARTED</th><th>ENDED</th><th>STATUS</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <div class="panel" id="panel-alltime">
+      <div class="box">
+        <div class="bt">ALL-TIME FRANCHISE LEDGER (BY OWNER)</div>
+        <div class="tscroll">
+          <table id="at-tbl">
+            <thead><tr><th>OWNER</th><th>TEAM NAME(S)</th><th>YRS</th><th>W</th><th>L</th><th>WIN%</th><th>TITLES</th><th>PLAYOFFS</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-owners">
+      <div class="box">
+        <div class="bt">OWNER HISTORY — TEAM NAMES OVER THE YEARS</div>
+        <div id="owner-history"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">LEAGUE 356151 &mdash; <span id="ft"></span></div>
+</div>
+
+<script>
+const PROXY  = '';
+const LEAGUE = 356151;
+const NOW    = new Date().getFullYear();
+
+// ─────────────────────────────────────────────
+// NICKNAME OVERRIDES
+// To use a nickname instead of ESPN's real name,
+// find the owner's ESPN ID in the browser console
+// (open DevTools → Console after loading the dashboard)
+// then add an entry here:
+//
+//   'espn-owner-id': 'Nickname',
+//
+// Example:
+//   '{ABC12345-...}': 'Big Cat',
+// ─────────────────────────────────────────────
+const OWNER_OVERRIDES = {
+  '{9CDBBFCA-B830-465E-90E7-C5538EF4377D}': 'Kyle',
+  '{252CD220-CDD0-4F7D-B371-4AFA410E6188}': 'Wes',
+  '{B7FC191D-8441-4913-9A81-75BA13AEF6E3}': 'Clark',
+  '{E0309CE4-49B4-472D-B128-1B247B05CC01}': 'Jordy',
+  '{484590EA-E3AB-4D9F-93AE-F3E10CA6E80D}': 'BLB',
+  '{7AA46AD4-97B6-4003-934F-259C580BE80E}': 'Austin',
+  '{ED091ACB-E255-42A8-A7D5-87DD4D70458B}': 'Eric',
+  '{EF68E677-2585-4801-8608-FEE8C20BBD3C}': 'Robbie',
+  '{CAD322C5-6BEE-4C1C-8B96-6583C67E8CC8}': 'Scott',
+  '{A03F981C-191D-4975-A45C-1536871B000D}': 'Steven',
+  '{812BFB58-07BE-4D68-BA9C-99DD509A9B2B}': 'Travis',
+  '{F46DEEF8-BCE4-4775-8ECF-1DC0F47B501E}': 'Dan',
+};
+
+// Attempt years from 2002 to present — proxy handles modern vs legacy routing
+const MODERN_START = 2018;
+const LEGACY_START = 2002;
+
+let allData = {};    // year -> raw ESPN data
+let seasons = [];    // sorted list of years that returned data
+let curIdx  = 0;
+// ptsChart removed — overview replaced with This Week tab
+
+// owner-keyed aggregates built after data loads
+let ownerNames  = {};   // ownerId -> display name (most recent)
+let ownerTeams  = {};   // ownerId -> Set of team names used
+
+// ─────────────────────────────────────────────
+// DATA FETCHING
+// ─────────────────────────────────────────────
+
+// Split into two fetches: core data and schedule (which can be large)
+const VIEWS_CORE     = 'view=mStandings&view=mSettings&view=mTeam&view=mMatchupScore&view=mMembers';
+const VIEWS_SCHEDULE = 'view=mSchedule&view=mSettings';
+
+async function fetchWithTimeout(url, ms=12000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { clearTimeout(timer); return null; }
+}
+
+async function fetchModern(year) {
+  const base = `${PROXY}/seasons/${year}/segments/0/leagues/${LEAGUE}`;
+  const [core, sched] = await Promise.all([
+    fetchWithTimeout(`${base}?${VIEWS_CORE}`),
+    fetchWithTimeout(`${base}?${VIEWS_SCHEDULE}`),
+  ]);
+  if (!core || !core.teams?.length) return null;
+  // Merge schedule into core
+  if (sched?.schedule) core.schedule = sched.schedule;
+  return core;
+}
+
+async function fetchLegacy(year) {
+  const base = `${PROXY}/legacy/${LEAGUE}?seasonId=${year}`;
+  const [core, sched] = await Promise.all([
+    fetchWithTimeout(`${base}&${VIEWS_CORE}`),
+    fetchWithTimeout(`${base}&${VIEWS_SCHEDULE}`),
+  ]);
+  const coreObj  = Array.isArray(core)  ? core[0]  : core;
+  const schedObj = Array.isArray(sched) ? sched[0] : sched;
+  if (!coreObj || !coreObj.teams?.length) return null;
+  if (schedObj?.schedule) coreObj.schedule = schedObj.schedule;
+  return coreObj;
+}
+
+async function fetchYear(year) {
+  if (year >= MODERN_START) return fetchModern(year);
+  return fetchLegacy(year);
+}
+
+async function init() {
+  const dotsEl = document.getElementById('dots');
+  const progEl = document.getElementById('prog');
+  const frames = ['&gt; . .','&gt; &gt; .','&gt; &gt; &gt;','. &gt; &gt;','. . &gt;','...'];
+  let fi = 0;
+  const anim = setInterval(() => { dotsEl.innerHTML = frames[fi++ % frames.length]; }, 220);
+
+  const years = [];
+  for (let y = LEGACY_START; y <= NOW; y++) years.push(y);
+
+  // Fetch in batches to avoid hammering the proxy
+  const BATCH = 2;  // smaller batches since each year now makes 2 parallel requests
+  let loaded = 0;
+  for (let i = 0; i < years.length; i += BATCH) {
+    const batch = years.slice(i, i + BATCH);
+    const results = await Promise.all(batch.map(y => fetchYear(y).then(d => ({y, d}))));
+    results.forEach(({y, d}) => { if (d) { allData[y] = d; loaded++; } });
+    progEl.textContent = `checked ${Math.min(i + BATCH, years.length)} of ${years.length} seasons — ${loaded} found`;
+  }
+
+  clearInterval(anim);
+
+  seasons = Object.keys(allData).map(Number).sort((a,b) => a-b);
+
+  if (!seasons.length) {
+    document.getElementById('loading').style.display = 'none';
+    const eb = document.getElementById('error-box');
+    eb.style.display = 'block';
+    eb.textContent = [
+      '!! NO DATA FOUND !!',
+      '',
+      'Make sure espn_proxy.py is running:',
+      '  python espn_proxy.py',
+      '',
+      'Then refresh (F5).'
+    ].join('\n');
+    return;
+  }
+
+  curIdx = seasons.length - 1;
+
+  // For the current season, do an extra fetch with live scoring views
+  // to get in-progress points and projections for the This Week tab
+  if (allData[NOW]) {
+    const curPeriodId  = allData[NOW]?.scoringPeriodId || 1;
+
+    // Try fantasy.espn.com scoreboard endpoint — this one returns actual live scores
+    // whereas lm-api-reads only returns projections (statSourceId:1)
+    const scoreboardBase = `${PROXY}/scoreboard/seasons/${NOW}/segments/0/leagues/${LEAGUE}`;
+    const liveViews      = `view=mScoreboard&view=mMatchupScore&view=mLiveScoring&view=mRoster&view=mSettings&view=mTeam&view=mMembers&scoringPeriodId=${curPeriodId}`;
+    const liveData       = await fetchWithTimeout(`${scoreboardBase}?${liveViews}`, 15000);
+    const liveBase       = scoreboardBase;  // keep for reference below
+    if (liveData && liveData.schedule) {
+      allData[NOW].schedule        = liveData.schedule;
+      allData[NOW].scoringPeriodId = liveData.scoringPeriodId || allData[NOW].scoringPeriodId;
+      console.log(`Live scoring fetched — scoring period: ${liveData.scoringPeriodId}, matchups: ${liveData.schedule.length}`);
+
+      // Merge live team data (roster scores, totalPoints) into allData[NOW].teams
+      if (liveData.teams) {
+        const liveTeamById = {};
+        liveData.teams.forEach(t => { liveTeamById[t.id] = t; });
+        allData[NOW].teams = allData[NOW].teams.map(t => {
+          const live = liveTeamById[t.id];
+          if (!live) return t;
+          // Overwrite score and roster with live versions
+          return {
+            ...t,
+            totalPoints:               live.totalPoints               ?? t.totalPoints,
+            totalPointsLive:           live.totalPointsLive           ?? t.totalPointsLive,
+            totalProjectedPoints:      live.totalProjectedPoints      ?? t.totalProjectedPoints,
+            totalProjectedPointsLive:  live.totalProjectedPointsLive  ?? t.totalProjectedPointsLive,
+            rosterForCurrentScoringPeriod: live.rosterForCurrentScoringPeriod || t.rosterForCurrentScoringPeriod,
+          };
+        });
+        console.log('Live team roster data merged for', allData[NOW].teams.length, 'teams');
+        // Sample first starter's appliedStatTotal
+        const sample = allData[NOW].teams[0]?.rosterForCurrentScoringPeriod?.entries?.[0];
+        console.log('Sample starter appliedStatTotal:', sample?.playerPoolEntry?.appliedStatTotal, sample?.playerPoolEntry?.player?.fullName);
+      }
+    }
+
+    // Fetch live scoring separately — this is where ESPN returns minutesLive and playersYetToPlay
+    const liveScoreData = await fetchWithTimeout(`${liveBase}?view=mLiveScoring`, 15000);
+    if (liveScoreData?.teams) {
+      // Merge liveScoring data into teams by teamId
+      const liveTeamMap = {};
+      liveScoreData.teams.forEach(t => { liveTeamMap[t.id] = t; });
+      if (allData[NOW]?.teams) {
+        allData[NOW].teams.forEach(t => {
+          const liveT = liveTeamMap[t.id];
+          if (liveT?.liveScoring) t.liveScoring = liveT.liveScoring;
+        });
+      }
+      console.log('Live scoring detail fetched. Sample team:', JSON.stringify(liveScoreData.teams?.[0]?.liveScoring, null, 2));
+    }
+  }
+
+  // Build owner lookup tables
+  buildOwnerMaps();
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+  document.getElementById('ft').textContent = `${seasons.length} SEASONS LOADED (${seasons[0]}–${seasons[seasons.length-1]}) — ${new Date().toLocaleTimeString()}`;
+
+  const lname = (allData[seasons[seasons.length-1]]?.settings?.name || 'FANTASY LEAGUE').toUpperCase();
+  document.title = lname + ' | Hall of Records';
+  document.getElementById('league-tag').innerHTML =
+    `<span style="color:#e8e000">${lname}</span> &mdash; ${seasons[0]}&ndash;${seasons[seasons.length-1]}`;
+
+  buildOverview();
+  buildChampions();
+  renderStandings();
+  buildRecords();
+  buildAllTime();
+  buildOwnerHistory();
+}
+
+// ─────────────────────────────────────────────
+// OWNER IDENTITY RESOLUTION
+// Groups teams by primaryOwner across seasons.
+// Uses the owner's actual first + last name from ESPN's members array.
+// Falls back to most recent team name if no member record found.
+// ─────────────────────────────────────────────
+
+function buildOwnerMaps() {
+  ownerNames = {};
+  ownerTeams = {};
+
+  // Build a master members map across all seasons: ownerId -> "First Last"
+  // Walk oldest→newest so the most recent record wins if names differ
+  const memberNames = {};
+  seasons.forEach(y => {
+    (allData[y]?.members || []).forEach(m => {
+      if (!m.id) return;
+      const first = (m.firstName || '').trim();
+      const last  = (m.lastName  || '').trim();
+      const full  = [first, last].filter(Boolean).join(' ');
+      if (full) memberNames[m.id] = full;
+    });
+  });
+
+  // Now map each team's primaryOwner to a display name
+  seasons.forEach(y => {
+    (allData[y]?.teams || []).forEach(t => {
+      const oid      = t.primaryOwner || ('anon_' + (t.id || Math.random()));
+      const realName = memberNames[oid];
+      const tname    = teamName(t);
+
+      // Prefer real name; fall back to team name if ESPN didn't return member data
+      ownerNames[oid] = realName || tname;
+
+      if (!ownerTeams[oid]) ownerTeams[oid] = [];
+      if (!ownerTeams[oid].includes(tname)) ownerTeams[oid].push(tname);
+    });
+  });
+
+  // Apply nickname overrides
+  Object.entries(OWNER_OVERRIDES).forEach(([oid, nickname]) => {
+    if (ownerNames[oid] !== undefined) ownerNames[oid] = nickname;
+  });
+
+  // Log all owners to console so you can find IDs for the override map
+  console.log('%c FANTASY LEAGUE — OWNER ID MAP ', 'background:#ff6b00;color:#000;font-weight:bold;padding:2px 6px;');
+  Object.entries(ownerNames).forEach(([oid, name]) => {
+    console.log(`  ${name.padEnd(30)} → ${oid}`);
+  });
+}
+
+// Raw team name from ESPN data
+function teamName(t) {
+  return ((t.location || '') + ' ' + (t.nickname || '')).trim() || t.abbrev || 'Team ' + t.id;
+}
+
+// Owner display name (most recent team name)
+function ownerDisplay(t) {
+  const oid = t.primaryOwner;
+  return ownerNames[oid] || teamName(t);
+}
+
+// Get owner id from a team object
+function ownerId(t) {
+  return t.primaryOwner || ('anon_' + t.id);
+}
+
+// ─────────────────────────────────────────────
+// OVERVIEW
+// ─────────────────────────────────────────────
+
+function buildOverview() {
+  const data     = allData[NOW];
+  if (!data) {
+    document.getElementById('week-matchups').innerHTML = '<div class="dim" style="padding:20px">No current season data found.</div>';
+    return;
+  }
+
+  const settings  = data.settings?.scheduleSettings || {};
+  const regWeeks  = settings.regularSeasonMatchupPeriodCount || settings.matchupPeriodCount || 13;
+  const curPeriod = data.scoringPeriodId || 1;
+  const isPlayoff = curPeriod > regWeeks;
+  const weekLabel = isPlayoff
+    ? `PLAYOFFS — ROUND ${curPeriod - regWeeks}`
+    : `WEEK ${curPeriod} MATCHUPS`;
+
+  // Update tab button and box title
+  document.getElementById('week-tab-btn').textContent = isPlayoff
+    ? `[ PLAYOFFS RD ${curPeriod - regWeeks} ]`
+    : `[ WEEK ${curPeriod} ]`;
+  document.getElementById('week-box-title').textContent = weekLabel;
+
+  // Build teamId -> team object map
+  const teamMap = {};
+  (data.teams || []).forEach(t => { teamMap[t.id] = t; });
+
+  // Helper: get player status and minutes remaining for a team
+  // Uses liveScoring if available (has minutesLive + playersYetToPlay),
+  // otherwise falls back to counting starters with appliedStatTotal > 0
+  const BENCH_SLOTS = new Set([20, 21]);
+  function getPlayerStatus(teamId) {
+    const team = teamMap[teamId];
+    if (!team) return null;
+
+    // Prefer live scoring data which has explicit minutes
+    if (team.liveScoring) {
+      const ls = team.liveScoring;
+      const minsLeft     = ls.minutesLive ?? ls.minutesLeft ?? null;
+      const yetToPlay    = ls.playersYetToPlay ?? null;
+      const currentlyPlaying = ls.playersCurrentlyPlaying ?? 0;
+      const total        = ls.numberOfStarterSlots ?? ls.totalStarterSlots ?? null;
+      if (minsLeft !== null || yetToPlay !== null) {
+        return { minsLeft, yetToPlay, currentlyPlaying, total, useLive: true };
+      }
+    }
+
+    // Fallback: count from roster
+    const entries = team.rosterForCurrentScoringPeriod?.entries
+                 || team.roster?.entries || [];
+    let played = 0, total = 0;
+    entries.forEach(entry => {
+      if (BENCH_SLOTS.has(entry.lineupSlotId)) return;
+      total++;
+      const stats = entry.playerPoolEntry?.player?.stats || [];
+      // statSourceId 0 = actual scores, statSourceId 1 = projections
+      const hasActual = stats.some(s => s.statSourceId === 0 && (s.appliedTotal || 0) > 0);
+      // Also check appliedStatTotal directly as fallback
+      const hasScore  = hasActual || (entry.playerPoolEntry?.appliedStatTotal || 0) > 0;
+      if (hasScore) played++;
+    });
+    return total > 0 ? { played, total, useLive: false } : null;
+  }
+
+  // Find matchups for the current scoring period
+  const schedule  = data.schedule || [];
+  const matchups  = schedule.filter(m =>
+    m.matchupPeriodId === curPeriod && m.home && m.away
+  );
+
+  // Debug: log roster entry to find minutes remaining field
+  if (data.teams?.[0]) {
+    const entries = data.teams[0].rosterForCurrentScoringPeriod?.entries
+                 || data.teams[0].roster?.entries || [];
+    if (entries[0]) {
+      console.log('Sample roster entry:', JSON.stringify(entries[0], null, 2));
+    }
+    console.log('Sample matchup home side:', JSON.stringify(matchups[0]?.home, null, 2));
+  }
+
+  if (!matchups.length) {
+    document.getElementById('week-matchups').innerHTML = '<div class="dim" style="padding:20px">No matchup data available for this week.</div>';
+    return;
+  }
+
+  // Matchup colors — one per pairing so both teams share a color
+  const MATCHUP_COLORS = [
+    '#e8e000', // yellow
+    '#ff6b00', // orange
+    '#39e87a', // green
+    '#4db8ff', // blue
+    '#e84393', // pink
+    '#c97bff', // purple
+    '#ff4444', // red
+    '#00e8d4', // teal
+  ];
+
+  // Build a flat list of all teams sorted by points scored this week
+  const teamScores = [];
+  matchups.forEach((m, mi) => {
+    const color = MATCHUP_COLORS[mi % MATCHUP_COLORS.length];
+    [m.home, m.away].forEach(side => {
+      const t       = teamMap[side.teamId];
+      if (!t) return;
+      const oppSide = side === m.home ? m.away : m.home;
+      const opp     = teamMap[oppSide.teamId];
+      // Pull scores from schedule, live team, and by summing statSourceId:0 roster stats
+      const liveTeam = teamMap[side.teamId];
+      const actualFromSched = side.totalPoints || side.totalPointsLive || 0;
+      const actualFromTeam  = liveTeam?.totalPointsLive || liveTeam?.totalPoints || 0;
+
+      // Sum actual scores from roster entries (statSourceId 0 = real stats)
+      let actualFromRoster = 0;
+      const entries = liveTeam?.rosterForCurrentScoringPeriod?.entries || [];
+      entries.forEach(entry => {
+        if (BENCH_SLOTS.has(entry.lineupSlotId)) return;
+        const stats = entry.playerPoolEntry?.player?.stats || [];
+        const actual = stats.find(s => s.statSourceId === 0);
+        if (actual) actualFromRoster += (actual.appliedTotal || 0);
+      });
+
+      const actual  = Math.max(actualFromSched, actualFromTeam, actualFromRoster);
+      const proj    = side.totalProjectedPointsLive || side.totalProjectedPoints
+                   || liveTeam?.totalProjectedPointsLive || liveTeam?.totalProjectedPoints
+                   || actual;
+      const oppAct  = oppSide.totalPoints || oppSide.totalPointsLive || 0;
+      teamScores.push({
+        name:    ownerDisplay(t),
+        actual, proj, color,
+        winning: actual > oppAct,
+        tied:    actual === oppAct,
+        oppName: opp ? ownerDisplay(opp) : 'Unknown',
+        playerStatus: getPlayerStatus(side.teamId),
+      });
+    });
+  });
+
+  teamScores.sort((a, b) => b.actual - a.actual);
+
+  // Fixed scale: 0–200, markers at 50, 100, 150, 200
+  const SCALE     = 200;
+  const MARKERS   = [50, 100, 150, 200];
+  const gridLines = MARKERS.map(v => `
+    <div class="week-grid-marker" style="left:${v/SCALE*100}%">
+      <span class="week-grid-label">${v}</span>
+    </div>`).join('');
+
+  const leaderHtml = teamScores.map((ts, i) => {
+    const actualPct = Math.min(ts.actual / SCALE * 100, 100).toFixed(1);
+    const projPct   = Math.min(ts.proj   / SCALE * 100, 100).toFixed(1);
+    const rank      = String(i + 1).padStart(2, '0');
+    const color     = ts.color;
+    const status    = ts.tied
+      ? `<span style="color:#888;font-size:13px;min-width:60px;letter-spacing:1px">TIED</span>`
+      : ts.winning
+      ? `<span style="color:${color};font-size:13px;min-width:60px;letter-spacing:1px">WINNING</span>`
+      : `<span style="color:#555;font-size:13px;min-width:60px;letter-spacing:1px">LOSING</span>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #111;">
+      <span style="font-family:'Press Start 2P',monospace;font-size:9px;color:#444;min-width:22px">${rank}</span>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+          <span style="font-size:18px;color:${color}">${ts.name}</span>
+          <span style="display:flex;align-items:center;gap:10px">
+            ${status}
+            <span style="font-size:13px;color:#333">vs ${ts.oppName}</span>
+            <span style="font-family:'Press Start 2P',monospace;font-size:12px;color:${color}">${ts.actual.toFixed(1)}</span>
+            <span style="font-size:14px;color:#555">▸ ${ts.proj.toFixed(1)}</span>
+            ${ts.playerStatus
+              ? (() => {
+                  const ps = ts.playerStatus;
+                  if (ps.useLive) {
+                    // Have ESPN live scoring data
+                    if (ps.minsLeft === 0 && ps.yetToPlay === 0) {
+                      return `<span style="font-size:12px;color:#333;letter-spacing:1px">FINAL</span>`;
+                    }
+                    const parts = [];
+                    if (ps.minsLeft !== null) parts.push(`${ps.minsLeft} MIN LEFT`);
+                    if (ps.yetToPlay !== null && ps.yetToPlay > 0) parts.push(`${ps.yetToPlay} YTP`);
+                    return `<span style="font-size:12px;color:#444;letter-spacing:1px;border:1px solid #2a2a2a;padding:1px 6px">${parts.join(' · ')}</span>`;
+                  } else {
+                    // Fallback: played/total count
+                    if (ps.played === ps.total) {
+                      return `<span style="font-size:12px;color:#333;letter-spacing:1px">FINAL</span>`;
+                    } else if (ps.played === 0) {
+                      return `<span style="font-size:12px;color:#333;letter-spacing:1px">NOT STARTED</span>`;
+                    } else {
+                      return `<span style="font-size:12px;color:#444;letter-spacing:1px;border:1px solid #2a2a2a;padding:1px 6px">${ps.played}/${ps.total} PLAYED</span>`;
+                    }
+                  }
+                })()
+              : ''
+            }
+          </span>
+        </div>
+        <div class="week-grid-wrap">
+          <div class="week-grid">
+            ${gridLines}
+            <div class="week-bar-actual" style="width:${actualPct}%;background:${color}"></div>
+            <div class="week-bar-proj"   style="left:${projPct}%;background:${color};opacity:0.5"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('week-matchups').innerHTML = leaderHtml;
+}
+
+// ─────────────────────────────────────────────
+// CHAMPIONS
+// ─────────────────────────────────────────────
+
+function buildChampions() {
+  // First pass: count total championships per owner across all seasons (oldest first)
+  const champTotal = {};
+  seasons.forEach(y => {
+    if (y === NOW) return;  // skip current season
+    const sorted = [...(allData[y]?.teams||[])].sort((a,b)=>(a.rankCalculatedFinal||99)-(b.rankCalculatedFinal||99));
+    if (!sorted[0]) return;
+    const cOid = ownerId(sorted[0]);
+    champTotal[cOid] = (champTotal[cOid] || 0) + 1;
+  });
+
+  // Second pass: build rows newest first, with a running count from 1 up to total
+  const champRunning = {};  // ownerId -> how many we've shown so far (counting up from oldest)
+  // We need to assign numbers oldest→newest, so collect entries oldest first then reverse for display
+  const entries = [];
+  seasons.forEach(y => {
+    if (y === NOW) return;  // skip current season — not over yet
+    const sorted = [...(allData[y]?.teams||[])].sort((a,b)=>(a.rankCalculatedFinal||99)-(b.rankCalculatedFinal||99));
+    if (!sorted[0]) return;
+    const cOid  = ownerId(sorted[0]);
+    const cName = ownerDisplay(sorted[0]);
+    const rName = sorted[1] ? ownerDisplay(sorted[1]) : '---';
+    const tName = teamName(sorted[0]);
+    champRunning[cOid] = (champRunning[cOid] || 0) + 1;
+    entries.push({ y, cOid, cName, rName, tName, num: champRunning[cOid], total: champTotal[cOid] });
+  });
+
+  // Display newest first
+  const html = entries.slice().reverse().map(({ y, cOid, cName, rName, tName, num, total }) => {
+    const yearTag = tName !== cName ? ` <span class="dim">[${tName}]</span>` : '';
+    const multi   = num > 1 ? ` <span class="orange">${'★'.repeat(num)}</span>` : '';
+    return `<div class="trophy-row">
+      <span class="ty">${y}</span>
+      <span class="tc">&gt; ${cName}${yearTag}${multi}</span>
+      <span class="tr">vs ${rName}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('champ-list').innerHTML = html;
+
+  const sorted = Object.entries(champTotal).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1] || 1;
+  document.getElementById('title-bars').innerHTML = sorted.map(([oid, count], i) => `
+    <div class="bar-row">
+      <span class="bl">${ownerNames[oid] || oid}</span>
+      <div class="bt2"><div class="bf${i>0?' alt':''}" style="width:${Math.round(count/max*100)}%"></div></div>
+      <span class="bv">${count} title${count>1?'s':''}</span>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────
+// STANDINGS
+// ─────────────────────────────────────────────
+
+function renderStandings() {
+  const y = seasons[curIdx];
+  document.getElementById('s-disp').textContent  = y;
+  document.getElementById('s-title').textContent = y === NOW ? `CURRENT STANDINGS — ${y} SEASON` : `FINAL STANDINGS — ${y} SEASON`;
+
+  const teams = allData[y]?.teams || [];
+  let sorted;
+  if (y === NOW) {
+    // Mid-season: ESPN doesn't set rankCalculatedFinal yet, so calculate manually
+    // Sort by: W desc, then PF desc (ESPN's standard tiebreaker)
+    sorted = [...teams].sort((a, b) => {
+      const wA = a.record?.overall?.wins || 0;
+      const wB = b.record?.overall?.wins || 0;
+      if (wB !== wA) return wB - wA;
+      const pfA = a.record?.overall?.pointsFor || 0;
+      const pfB = b.record?.overall?.pointsFor || 0;
+      return pfB - pfA;
+    });
+  } else {
+    sorted = [...teams].sort((a,b)=>(a.rankCalculatedFinal||99)-(b.rankCalculatedFinal||99));
+  }
+  document.querySelector('#s-tbl tbody').innerHTML = sorted.map((t, i) => {
+    const r  = y === NOW ? (i + 1) : (t.rankCalculatedFinal || 99);
+    const w  = t.record?.overall?.wins  || 0;
+    const l  = t.record?.overall?.losses || 0;
+    const ti = t.record?.overall?.ties  || 0;
+    const pf = (t.record?.overall?.pointsFor    || 0).toFixed(1);
+    const pa = (t.record?.overall?.pointsAgainst || 0).toFixed(1);
+    const pre = r===1 ? '<span class="gold">&gt;&gt; </span>' : r===2 ? '<span class="orange">&gt; </span>' : '';
+    const oName   = ownerDisplay(t);
+    const rawName = teamName(t);
+    const altName = rawName !== oName ? `<span class="dim"> [${rawName}]</span>` : '';
+    return `<tr>
+      <td class="dim">${String(r).padStart(2,'0')}</td>
+      <td>${pre}${oName}${altName}</td>
+      <td class="dim" style="font-size:14px">${rawName !== oName ? rawName : ''}</td>
+      <td class="gold">${w}</td><td class="dim">${l}</td><td class="dim">${ti}</td>
+      <td class="orange">${pf}</td><td class="dim">${pa}</td>
+    </tr>`;
+  }).join('');
+}
+function prevS() { if(curIdx>0){curIdx--;renderStandings();} }
+function nextS() { if(curIdx<seasons.length-1){curIdx++;renderStandings();} }
+
+// ─────────────────────────────────────────────
+// RECORDS
+// ─────────────────────────────────────────────
+
+// Determine which owner IDs were in the most recent season
+function getActiveOwners() {
+  const lastSeason = seasons[seasons.length - 1];
+  const active = new Set();
+  (allData[lastSeason]?.teams || []).forEach(t => active.add(ownerId(t)));
+  return active;
+}
+
+// Build a flat chronological list of all regular season and postseason
+// matchup results per owner, across all seasons.
+// 2-week playoff matchups are deduplicated by matchup ID so they count as ONE result.
+// Returns { regular: {oid -> [{week, year, win, label}]},
+//           post:    {oid -> [{week, year, win, label}]} }
+function buildMatchupTimelines() {
+  const regular = {};
+  const post    = {};
+
+  seasons.forEach(y => {
+    const data     = allData[y];
+    if (!data) return;
+    const schedule = data.schedule || [];
+    const settings = data.settings?.scheduleSettings || {};
+
+    // ESPN fields: regularSeasonMatchupPeriodCount = number of reg season periods
+    const regWeeks = settings.regularSeasonMatchupPeriodCount
+                  || settings.matchupPeriodCount
+                  || 13;
+
+    // Build a map of teamId -> ownerId for this season
+    const teamOwner = {};
+    (data.teams || []).forEach(t => { teamOwner[t.id] = ownerId(t); });
+
+    // Deduplicate matchups by their unique ID — ESPN creates one schedule entry
+    // per matchupPeriod for 2-week playoff matchups, but they share the same
+    // matchup ID. We only want to count the result once, using the LAST period's
+    // scores (which reflect the full 2-week total).
+    const matchupMap = {};  // matchupId -> matchup object (last period wins)
+    schedule.forEach(m => {
+      if (!m.home || !m.away) return;
+      const key = m.id != null ? `${y}-${m.id}` : `${y}-${m.home.teamId}-${m.away.teamId}-${m.matchupPeriodId}`;
+      // Always overwrite so the highest period (last week of a 2-week matchup) wins
+      if (!matchupMap[key] || m.matchupPeriodId > (matchupMap[key].matchupPeriodId || 0)) {
+        matchupMap[key] = m;
+      }
+    });
+
+    Object.values(matchupMap).forEach(m => {
+      const period = m.matchupPeriodId;
+      if (!period) return;
+
+      const home = m.home, away = m.away;
+      if (!home || !away) return;
+
+      const homeOid = teamOwner[home.teamId];
+      const awayOid = teamOwner[away.teamId];
+      if (!homeOid || !awayOid) return;
+
+      const homeWin = (home.totalPoints || 0) > (away.totalPoints || 0);
+      const isPost  = period > regWeeks;
+
+      // For postseason, skip loser's bracket (toilet bowl).
+      // ESPN tags these with playoffTierType containing 'LOSER' or 'CONSOLATION'.
+      if (isPost) {
+        const tierType = (m.playoffTierType || '').toUpperCase();
+        if (tierType.includes('LOSER') || tierType.includes('CONSOLATION')) return;
+      }
+
+      // Label: for regular season use the period week, for playoffs use round number
+      const label = isPost
+        ? `Playoff Rd ${period - regWeeks} ${y}`
+        : `Wk ${period} ${y}`;
+
+      const bucket = isPost ? post : regular;
+
+      [homeOid, awayOid].forEach((oid, idx) => {
+        if (!bucket[oid]) bucket[oid] = [];
+        const win = idx === 0 ? homeWin : !homeWin;
+        bucket[oid].push({ year: y, week: period, win, label });
+      });
+    });
+  });
+
+  // Sort each owner's games chronologically
+  const sortGames = obj => {
+    Object.keys(obj).forEach(oid => {
+      obj[oid].sort((a,b) => a.year !== b.year ? a.year-b.year : a.week-b.week);
+    });
+  };
+  sortGames(regular);
+  sortGames(post);
+
+  return { regular, post };
+}
+
+// Find each owner's longest consecutive win streak in a list of games.
+// Returns { best: N, startLabel, endLabel, active: bool }
+function longestStreak(games) {
+  let best = 0, cur = 0;
+  let curStart = null, bestStart = null, bestEnd = null, active = false;
+
+  games.forEach((g, i) => {
+    if (g.win) {
+      if (cur === 0) curStart = g.label;
+      cur++;
+      if (cur > best) {
+        best      = cur;
+        bestStart = curStart;
+        bestEnd   = g.label;
+        active    = (i === games.length - 1);
+      }
+    } else {
+      cur = 0; curStart = null;
+    }
+  });
+
+  // Check if current streak (at end) equals best
+  if (cur === best && cur > 0) active = true;
+
+  return { best, startLabel: bestStart, endLabel: bestEnd, active };
+}
+
+function buildRecords() {
+  const activeOwners = getActiveOwners();
+
+  // ── Stat boxes ──
+  let hiPF=0, hiOid='', hiY=0;
+  let loPF=Infinity, loOid='', loY=0;
+  let hiPA=0, hiPAOid='', hiPAY=0;
+  let loPA=Infinity, loPAOid='', loPAY=0;
+  let bestAvgFinish=Infinity, bestAvgOid='';
+  let worstAvgFinish=0, worstAvgOid='';
+  let mostRunnerUp=0, mostRunnerUpOid='';
+  let mostLastPlace=0, mostLastOid='';
+  let mostPlayoffs=0, mostPlayoffsOid='';
+  let mostConsecPlayoffs=0, mostConsecOid='';
+
+  const finishTotals  = {};  // oid -> {sum, count}
+  const runnerUps     = {};
+  const lastPlaces    = {};
+  const playoffCounts = {};
+  const consecPlayoff = {};  // oid -> {cur, best}
+
+  seasons.forEach(y => {
+    const teams    = allData[y]?.teams || [];
+    const maxSeed  = allData[y]?.settings?.scheduleSettings?.playoffTeamCount || 4;
+    const numTeams = teams.length;
+
+    // Track who made playoffs this year for consecutive calc
+    const madePlayoff = new Set();
+
+    teams.forEach(t => {
+      const oid  = ownerId(t);
+      const pf   = t.record?.overall?.pointsFor || 0;
+      const rank = t.rankCalculatedFinal || numTeams;
+
+      const pa = t.record?.overall?.pointsAgainst || 0;
+      const isCurrentYear = (y === NOW);
+      if (pf > hiPF) { hiPF=pf; hiOid=oid; hiY=y; }
+      if (!isCurrentYear && pf > 0 && pf < loPF) { loPF=pf; loOid=oid; loY=y; }
+      if (pa > hiPA) { hiPA=pa; hiPAOid=oid; hiPAY=y; }
+      if (!isCurrentYear && pa > 0 && pa < loPA) { loPA=pa; loPAOid=oid; loPAY=y; }
+
+      if (!finishTotals[oid]) finishTotals[oid]  = {sum:0, count:0};
+      finishTotals[oid].sum   += rank;
+      finishTotals[oid].count += 1;
+
+      if (rank === 2) runnerUps[oid]  = (runnerUps[oid]||0) + 1;
+      if (rank === numTeams) lastPlaces[oid] = (lastPlaces[oid]||0) + 1;
+
+      if ((t.playoffSeed||99) <= maxSeed) {
+        playoffCounts[oid] = (playoffCounts[oid]||0) + 1;
+        madePlayoff.add(oid);
+      }
+    });
+
+    // Consecutive playoff streaks
+    teams.forEach(t => {
+      const oid = ownerId(t);
+      if (!consecPlayoff[oid]) consecPlayoff[oid] = {cur:0, best:0};
+      if (madePlayoff.has(oid)) {
+        consecPlayoff[oid].cur++;
+        if (consecPlayoff[oid].cur > consecPlayoff[oid].best)
+          consecPlayoff[oid].best = consecPlayoff[oid].cur;
+      } else {
+        consecPlayoff[oid].cur = 0;
+      }
+    });
+  });
+
+  // Find records among ACTIVE owners only
+  activeOwners.forEach(oid => {
+    const avg = finishTotals[oid] ? finishTotals[oid].sum / finishTotals[oid].count : 99;
+    if (avg < bestAvgFinish)  { bestAvgFinish=avg;  bestAvgOid=oid; }
+    if (avg > worstAvgFinish) { worstAvgFinish=avg; worstAvgOid=oid; }
+    const ru = runnerUps[oid]||0;
+    if (ru > mostRunnerUp) { mostRunnerUp=ru; mostRunnerUpOid=oid; }
+    const lp = lastPlaces[oid]||0;
+    if (lp > mostLastPlace) { mostLastPlace=lp; mostLastOid=oid; }
+    const pp = playoffCounts[oid]||0;
+    if (pp > mostPlayoffs) { mostPlayoffs=pp; mostPlayoffsOid=oid; }
+    const cp = consecPlayoff[oid]?.best||0;
+    if (cp > mostConsecPlayoffs) { mostConsecPlayoffs=cp; mostConsecOid=oid; }
+  });
+
+  document.getElementById('rec-stats').innerHTML = `
+    <div class="sc"><span class="sl">SEASON HIGH PF</span><span class="sv">${Math.round(hiPF)}</span><span class="ss">${ownerNames[hiOid]||hiOid} (${hiY})</span></div>
+    <div class="sc"><span class="sl">SEASON LOW PF</span><span class="sv">${Math.round(loPF)}</span><span class="ss">${ownerNames[loOid]||loOid} (${loY})</span></div>
+    <div class="sc"><span class="sl">SEASON HIGH PA</span><span class="sv">${Math.round(hiPA)}</span><span class="ss">${ownerNames[hiPAOid]||hiPAOid} (${hiPAY})</span></div>
+    <div class="sc"><span class="sl">SEASON LOW PA</span><span class="sv">${Math.round(loPA)}</span><span class="ss">${ownerNames[loPAOid]||loPAOid} (${loPAY})</span></div>
+    <div class="sc"><span class="sl">BEST AVG FINISH</span><span class="sv">#${bestAvgFinish.toFixed(1)}</span><span class="ss">${ownerNames[bestAvgOid]||bestAvgOid}</span></div>
+    <div class="sc"><span class="sl">WORST AVG FINISH</span><span class="sv">#${worstAvgFinish.toFixed(1)}</span><span class="ss">${ownerNames[worstAvgOid]||worstAvgOid}</span></div>
+    <div class="sc"><span class="sl">MOST RUNNER-UPS</span><span class="sv">${mostRunnerUp}</span><span class="ss">${ownerNames[mostRunnerUpOid]||mostRunnerUpOid}</span></div>
+    <div class="sc"><span class="sl">MOST LAST PLACE</span><span class="sv">${mostLastPlace}</span><span class="ss">${ownerNames[mostLastOid]||mostLastOid}</span></div>
+    <div class="sc"><span class="sl">MOST PLAYOFFS</span><span class="sv">${mostPlayoffs}</span><span class="ss">${ownerNames[mostPlayoffsOid]||mostPlayoffsOid}</span></div>
+    <div class="sc"><span class="sl">CONSEC PLAYOFFS</span><span class="sv">${mostConsecPlayoffs}</span><span class="ss">${ownerNames[mostConsecOid]||mostConsecOid}</span></div>
+  `;
+
+  // ── Streak tables ──
+  try {
+    const { regular, post } = buildMatchupTimelines();
+
+    function renderStreakTable(tableId, timeline) {
+      const rows = [];
+      activeOwners.forEach(oid => {
+        const games = (timeline[oid] || []);
+        if (!games.length) return;
+        const s = longestStreak(games);
+        if (s.best === 0) return;
+        rows.push({ oid, ...s });
+      });
+
+      rows.sort((a,b) => b.best - a.best);
+
+      const tbody = document.querySelector(`#${tableId} tbody`);
+      if (!tbody) return;
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="dim">No schedule data available — ESPN may not return matchup data for older seasons.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map((r, i) => {
+        const statusHtml = r.active
+          ? `<span class="green">ACTIVE &#9646;</span>`
+          : `<span class="dim">ENDED</span>`;
+        const medal = i===0 ? '<span class="gold">&gt;&gt; </span>' : i===1 ? '<span class="orange">&gt; </span>' : '';
+        return `<tr>
+          <td>${medal}${ownerNames[r.oid]||r.oid}</td>
+          <td class="gold" style="font-family:'Press Start 2P',monospace;font-size:11px">${r.best}</td>
+          <td class="dim">${r.startLabel||'—'}</td>
+          <td class="dim">${r.endLabel||'—'}</td>
+          <td>${statusHtml}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    renderStreakTable('reg-streak-tbl', regular);
+  } catch(e) {
+    console.error('Streak table error:', e);
+    const tbody = document.querySelector('#reg-streak-tbl tbody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="dim">Error loading streak data — check console.</td></tr>';
+  }
+}
+
+// ─────────────────────────────────────────────
+// ALL-TIME TABLE
+// ─────────────────────────────────────────────
+
+function buildAllTime() {
+  const tot = {}, champCounts = {};
+  seasons.forEach(y => {
+    const teams  = allData[y]?.teams || [];
+    const sorted = [...teams].sort((a,b)=>(a.rankCalculatedFinal||99)-(b.rankCalculatedFinal||99));
+    if (sorted[0]) { const oid=ownerId(sorted[0]); champCounts[oid]=(champCounts[oid]||0)+1; }
+    const maxSeed = allData[y]?.settings?.scheduleSettings?.playoffTeamCount || 4;
+    teams.forEach(t => {
+      const oid=ownerId(t), w=t.record?.overall?.wins||0, l=t.record?.overall?.losses||0;
+      if (!tot[oid]) tot[oid]={w:0,l:0,seasons:0,playoffs:0};
+      tot[oid].w+=w; tot[oid].l+=l; tot[oid].seasons++;
+      if ((t.playoffSeed||99)<=maxSeed) tot[oid].playoffs++;
+    });
+  });
+
+  document.querySelector('#at-tbl tbody').innerHTML = Object.entries(tot)
+    .sort((a,b)=>b[1].w-a[1].w)
+    .map(([oid, d]) => {
+      const pct    = (d.w/(d.w+d.l||1)*100).toFixed(0);
+      const titles = champCounts[oid] || 0;
+      const tstr   = titles > 0 ? `<span class="gold">${titles} &#9733;</span>` : `<span class="dim">-</span>`;
+      const names  = (ownerTeams[oid]||[]).join(', ');
+      return `<tr>
+        <td class="gold">${ownerNames[oid]||oid}</td>
+        <td class="dim" style="font-size:14px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${names}">${names}</td>
+        <td class="dim">${d.seasons}</td>
+        <td class="gold">${d.w}</td>
+        <td class="dim">${d.l}</td>
+        <td class="orange">${pct}%</td>
+        <td>${tstr}</td>
+        <td class="dim">${d.playoffs}</td>
+      </tr>`;
+    }).join('');
+}
+
+// ─────────────────────────────────────────────
+// OWNER HISTORY (new tab)
+// ─────────────────────────────────────────────
+
+function buildOwnerHistory() {
+  const ownerSeasons = {};  // ownerId -> [{year, teamName, rank, pf}]
+  seasons.forEach(y => {
+    (allData[y]?.teams||[]).forEach(t => {
+      const oid = ownerId(t);
+      if (!ownerSeasons[oid]) ownerSeasons[oid] = [];
+      ownerSeasons[oid].push({
+        year: y,
+        name: teamName(t),
+        rank: t.rankCalculatedFinal || 99,
+        pf:   (t.record?.overall?.pointsFor||0).toFixed(1),
+        w:    t.record?.overall?.wins||0,
+        l:    t.record?.overall?.losses||0,
+      });
+    });
+  });
+
+  const sortedOwners = Object.entries(ownerSeasons).sort((a,b) => b[1].length - a[1].length);
+
+  document.getElementById('owner-history').innerHTML = sortedOwners.map(([oid, entries]) => {
+    const currentName = ownerNames[oid] || oid;
+    const rows = entries.sort((a,b)=>b.year-a.year).map(e => {
+      const medal = e.rank===1 ? '<span class="gold">&gt;&gt;</span> ' : e.rank===2 ? '<span class="orange">&gt;</span> ' : '';
+      const nameTag = e.name !== currentName ? `<span class="dim">[${e.name}]</span>` : '';
+      return `<tr>
+        <td class="dim">${e.year}</td>
+        <td>${nameTag}</td>
+        <td>${medal}<span class="${e.rank<=1?'gold':e.rank<=3?'orange':'dim'}">#${e.rank}</span></td>
+        <td class="gold">${e.w}</td><td class="dim">${e.l}</td>
+        <td class="orange">${e.pf}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div style="margin-bottom:20px">
+      <div style="font-family:'Press Start 2P',monospace;font-size:9px;color:#ff6b00;padding:8px 0 6px;border-bottom:1px solid #1a1a1a;margin-bottom:6px">
+        ${currentName} <span style="color:#444;font-size:8px">(${entries.length} season${entries.length>1?'s':''})</span>
+      </div>
+      <table style="font-size:15px">
+        <thead><tr><th>YEAR</th><th>TEAM NAME</th><th>FINISH</th><th>W</th><th>L</th><th>PF</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+// TAB NAV
+// ─────────────────────────────────────────────
+
+function showTab(name) {
+  document.querySelectorAll('.nbtn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const tabs = ['overview','standings','champions','records','alltime','owners'];
+  document.querySelectorAll('.nbtn')[tabs.indexOf(name)].classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+init();
+</script>
+</body>
+</html>
